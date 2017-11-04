@@ -4,29 +4,35 @@ import argparse
 import os
 import re
 import sys
-if sys.version_info < (3, 0):
-    from urllib import urlretrieve
-else:
-    from urllib.request import urlretrieve
 
+if sys.version_info[0] < 3:
+    import urllib2
+else:
+    import urllib.request
 
 def download(output_dir, include_dir, source_url, filename):
     full_filename = os.path.join(output_dir, filename)
     if os.path.exists(full_filename):
         return
+    lines = []
 
     include_file = os.path.join(include_dir, filename) if include_dir is not None else None
     if include_dir is not None and os.path.exists(include_file):
         print('Copying %s to %s' % (include_file, full_filename))
-        source = 'file://' + os.path.abspath(include_file) # file:// is required for python 3
+        with open(include_file, 'r') as f:
+            lines = f.readlines()
     else:
         print('Downloading %s from %s to %s' % (filename, source_url, full_filename))
-        source = source_url
-
+        if sys.version_info[0] < 3:
+            lines = urllib2.urlopen(source_url).readlines()
+        else:
+            lines = urllib.request.urlopen(source_url).readlines()
+            
     dirname = os.path.dirname(full_filename)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    urlretrieve(source, full_filename)
+    with open(full_filename, 'wb') as f:
+        f.writelines(lines)
 
 def parse_funcs(filename, regex_string, blacklist):
     print('Parsing header %s' % os.path.basename(filename))
